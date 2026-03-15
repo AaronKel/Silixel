@@ -1,1 +1,7 @@
 .*.sw*
+build/
+build_refactor/
+bin/
+*.o
+*.so
+*.exe

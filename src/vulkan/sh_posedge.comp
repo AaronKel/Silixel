@@ -1,0 +1,27 @@
+#version 450
+
+layout(local_size_x = 128, local_size_y = 1) in;
+
+layout(std430, set = 0, binding = 2) buffer Buf2 { uint  outputs[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint num;
+} push;
+
+void main()
+{
+  if (gl_GlobalInvocationID.x < push.num)
+  {
+    uint lut_id = gl_GlobalInvocationID.x;
+    uint outv   = outputs[lut_id];
+    uint d      = outv & 1u;
+    uint q      = (outv >> 1u) & 1u;
+    if (d != q) {
+      if (d == 1u) {
+        outputs[lut_id] = outv | 2u;
+      } else {
+        outputs[lut_id] = outv & 0xfffffffd;
+      }
+    }
+  }
+}

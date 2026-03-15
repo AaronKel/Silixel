@@ -1,0 +1,25 @@
+#version 450
+
+layout(local_size_x = 32, local_size_y = 1) in;
+
+layout(std430, set = 0, binding = 2) readonly buffer Buf2 { uint  outputs[]; };
+layout(std430, set = 0, binding = 3) readonly buffer Buf3 { uint  locs   []; };
+layout(std430, set = 0, binding = 4) buffer Buf4 { uint  vals   []; };
+
+layout(push_constant) uniform PushConstants {
+    uint num;
+    uint offset;
+} push;
+
+void main()
+{
+  if (gl_GlobalInvocationID.x < push.num)
+  {
+    uint port     = gl_GlobalInvocationID.x;
+    uint loc      = locs[port];
+    uint lut      = loc >> 1;
+    uint q_else_d = loc & 1;
+    uint val      = (outputs[lut] >> q_else_d) & 1;
+    vals[push.offset + port] = val;
+  }
+}

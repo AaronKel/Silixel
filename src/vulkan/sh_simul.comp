@@ -1,0 +1,47 @@
+#version 450
+
+layout(local_size_x = 128, local_size_y = 1) in;
+
+layout(std430, set = 0, binding = 0) readonly buffer Buf0 { uint  cfg    []; };
+layout(std430, set = 0, binding = 1) readonly buffer Buf1 { ivec4 addrs  []; };
+layout(std430, set = 0, binding = 2) buffer Buf2 { uint  outputs[]; };
+layout(std430, set = 0, binding = 6) buffer Buf6 { uint change_count; };
+
+layout(push_constant) uniform PushConstants {
+    uint start_lut;
+    uint num;
+} push;
+
+uint get_output(uint a)
+{
+  return (outputs[a >> 1u] >> (a & 1u)) & 1u;
+}
+
+void main()
+{
+  if (gl_GlobalInvocationID.x < push.num)
+  {
+    uint lut_id = push.start_lut + gl_GlobalInvocationID.x;
+    // apply LUT logic
+    uint C  = cfg  [lut_id];
+    ivec4 a = addrs[lut_id];
+    uint i0 = get_output(a.x);
+    uint i1 = get_output(a.y);
+    uint i2 = get_output(a.z);
+    uint i3 = get_output(a.w);
+    uint sh = i3 | (i2 << 1) | (i1 << 2) | (i0 << 3);
+    // get previous value, compute old/new
+    uint outv  = outputs[lut_id];
+    uint old_d = outv & 1u;
+    uint new_d = (C >> sh) & 1u;
+    // if different, assign
+    if (old_d != new_d) {
+      atomicAdd(change_count, 1u);
+      if (new_d == 1u) {
+        outputs[lut_id] = outv | 1u;
+      } else {
+        outputs[lut_id] = outv & 0xfffffffeu;
+      }
+    }
+  }
+}
